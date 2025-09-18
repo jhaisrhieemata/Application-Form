@@ -37,7 +37,7 @@ const SHEET_HEADER_TO_TAG = {
   "issued_at": "{{issued_at}}",
   "resided_years": "{{resided_years}}",
   "resided_months": "{{resided_months}}",
-  "Household Status": "{{Household Status}}",
+  "Household Status": "{{Household Status}}", // custom checkboxes
   "proof_of_billing": "{{proof_of_billing}}",
   "landlord_name": "{{landlord_name}}",
   "previous_address": "{{previous_address}}",
@@ -87,6 +87,7 @@ const SHEET_HEADER_TO_TAG = {
   "sketch": "{{sketch}}"                  // file upload
 };
 
+
 /**
  * Generate from the latest row (last form response)
  */
@@ -116,7 +117,7 @@ function generateFromLatestResponse() {
  */
 function createDocFromTemplate(rowObj) {
   const templateFile = DriveApp.getFileById(TEMPLATE_ID);
-  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(),'MM/dd/yyyy');
+  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(),'dd-MM-yyyy');
   const applicantName = (rowObj.client_name || 'applicant').replace(/[^a-zA-Z0-9 _-]/g, '').substring(0, 40);
   const newDocName = `${applicantName}_${timestamp}`;
 
@@ -130,11 +131,18 @@ function createDocFromTemplate(rowObj) {
     const placeholder = SHEET_HEADER_TO_TAG[header];
     let value = rowObj[header] || '';
 
-    // Apply date formatting for date fields
-    if (header === "date" || header === "birthdate" || header === "issued_at") {
-      if (value) {
-        value = toDateFmt(value);
-      }
+    // Date formatting
+    if (/date/i.test(header) && value) {
+      value = toDateFmt(value);
+    }
+
+    // Household Status checkboxes
+    if (header === "Household Status") {
+      let ownedBox = (value.toLowerCase() === "owned") ? "☑" : "☐";
+      let rentingBox = (value.toLowerCase() === "renting") ? "☑" : "☐";
+      body.replaceText("{{owned_box}}", ownedBox);
+      body.replaceText("{{renting_box}}", rentingBox);
+      continue;
     }
 
     if (header === "driver_license" || header === "sketch") {
@@ -143,6 +151,9 @@ function createDocFromTemplate(rowObj) {
       body.replaceText(escapeForRegExp(placeholder), value);
     }
   }
+
+  // Apply font formatting
+  formatDocumentFonts(body);
 
   doc.saveAndClose();
 
@@ -160,6 +171,17 @@ function createDocFromTemplate(rowObj) {
   Logger.log("Shareable PDF Link: " + links.sharePdfUrl);
 
   return links;
+}
+function formatDocumentFonts(body) {
+  const paras = body.getParagraphs();
+  paras.forEach(p => {
+    const text = p.editAsText();
+    if (!text) return;
+
+    // Force all text into fixed font
+    text.setFontFamily("Times New Roman");
+    text.setFontSize(11);
+  });
 }
 
 /**
@@ -182,17 +204,11 @@ function insertFileAtPlaceholder(body, placeholder, fileUrl) {
         el.asText().replaceText(escapeForRegExp(placeholder), "");
         const image = el.getParent().asParagraph().insertInlineImage(0, blob);
 
-        // 🔹 Get original size
-        const origWidth = image.getWidth();
-        const origHeight = image.getHeight();
-
-        // 🔹 Max allowed size
-        const maxWidth = 400;
-        const maxHeight = 300;
-
         // 🔹 Scale proportionally
-        let newWidth = origWidth;
-        let newHeight = origHeight;
+        const maxWidth = 720;
+        const maxHeight = 480;
+        let newWidth = image.getWidth();
+        let newHeight = image.getHeight();
 
         if (newWidth > maxWidth) {
           const scale = maxWidth / newWidth;
