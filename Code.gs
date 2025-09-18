@@ -37,9 +37,8 @@ const SHEET_HEADER_TO_TAG = {
   "issued_at": "{{issued_at}}",
   "resided_years": "{{resided_years}}",
   "resided_months": "{{resided_months}}",
-  "owned": "{{owned}}",
+  "Household Status": "{{Household Status}}",
   "proof_of_billing": "{{proof_of_billing}}",
-  "renting": "{{renting}}",
   "landlord_name": "{{landlord_name}}",
   "previous_address": "{{previous_address}}",
   "father_name": "{{father_name}}",
@@ -282,3 +281,4 @@ function toDateFmt(dt_string) {
 
   return `${day}-${month}-${year}`;
 }
+
